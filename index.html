@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resolución de Sudoku</title>
+    <style>
+        /* CSS3 - Estilos para la página y la retícula */
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #8b0000;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #555;
+            margin-top: 0;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        .instructions {
+            background-color: #ffffff;
+            border-left: 5px solid #8b0000;
+            padding: 15px 20px;
+            border-radius: 4px;
+            max-width: 450px;
+            width: 100%;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .instructions h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .instructions ol {
+            margin: 0;
+            padding-left: 20px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        /* Estilos del Tablero de Sudoku */
+        .sudoku-container {
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        table {
+            border-collapse: collapse;
+            border: 3px solid #000;
+        }
+
+        td {
+            width: 42px;
+            height: 42px;
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border: 1px solid #ccc;
+        }
+
+        /* Bordes gruesos para definir los sub-cuadrantes 3x3 */
+        tr:nth-child(3n) td {
+            border-bottom: 3px solid #000;
+        }
+        td:nth-child(3n) {
+            border-right: 3px solid #000;
+        }
+
+        /* Estilos diferenciados para números iniciales y resueltos */
+        .initial {
+            color: #000000;
+            background-color: #f9f9f9;
+        }
+
+        .solved {
+            color: #0056b3;
+            background-color: #e8f4fe;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        /* Botones de acción */
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn-solve {
+            background-color: #8b0000;
+            color: white;
+        }
+
+        .btn-solve:hover {
+            background-color: #a00000;
+        }
+
+        .btn-reset {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background-color: #5a6268;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Título con el nombre del alumno (Requerido según instrucciones) -->
+    <h1>Resolución de Sudoku</h1>
+    <h2>Alumno: [Escribe aquí tu nombre completo]</h2>
+
+    <!-- Caja de instrucciones de uso para el usuario -->
+    <div class="instructions">
+        <h3>Instrucciones de uso:</h3>
+        <ol>
+            <li>Visualiza la matriz inicial cargada con los números del examen[span_1](start_span)[span_1](end_span).</li>
+            <li>Haz clic en el botón <strong>"Resolver Sudoku"</strong> para ejecutar el algoritmo.</li>
+            <li>Los números que resuelven el Sudoku aparecerán resaltados en azul.</li>
+            <li>Puedes usar el botón <strong>"Reiniciar"</strong> para volver al estado inicial.</li>
+        </ol>
+    </div>
+
+    <!-- Contenedor del Tablero -->
+    <div class="sudoku-container">
+        <table id="sudoku-grid"></table>
+    </div>
+
+    <!-- Botones de Interacción -->
+    <div class="buttons">
+        <button class="btn-solve" onclick="resolverYMostrar()">Resolver Sudoku</button>
+        <button class="btn-reset" onclick="reiniciarTablero()">Reiniciar</button>
+    </div>
+
+    <script>
+        // JAVASCRIPT - Lógica de resolución y manipulación del DOM
+
+        // Matriz original según el examen (0 representa casillas vacías)
+        const tableroOriginal = [
+            [5, 3, 0, 0, 7, 0, 0, 0, 0],
+            [6, 0, 0, 1, 9, 5, 0, 0, 0],
+            [0, 9, 8, 0, 0, 0, 0, 6, 0],
+            [8, 0, 0, 0, 6, 0, 0, 0, 3],
+            [4, 0, 0, 8, 0, 3, 0, 0, 1],
+            [7, 0, 0, 0, 2, 0, 0, 0, 6],
+            [0, 6, 0, 0, 0, 0, 2, 8, 0],
+            [0, 0, 0, 4, 1, 9, 0, 0, 5],
+            [0, 0, 0, 0, 8, 0, 0, 7, 9]
+        ];
+
+        // Copia de trabajo para el estado actual
+        let tableroActual = JSON.parse(JSON.stringify(tableroOriginal));
+
+        // Función para dibujar el tablero en el HTML
+        function renderizarTablero() {
+            const grid = document.getElementById('sudoku-grid');
+            grid.innerHTML = '';
+
+            for (let r = 0; r < 9; r++) {
+                const tr = document.createElement('tr');
+                for (let c = 0; c < 9; c++) {
+                    const td = document.createElement('td');
+                    const val = tableroActual[r][c];
+
+                    if (val !== 0) {
+                        td.innerText = val;
+                        // Aplica clase CSS según si era número inicial o resuelto
+                        if (tableroOriginal[r][c] !== 0) {
+                            td.className = 'initial';
+                        } else {
+                            td.className = 'solved';
+                        }
+                    }
+                    tr.appendChild(td);
+                }
+                grid.appendChild(tr);
+            }
+        }
+
+        // Comprueba si un número puede colocarse en una posición específica
+        function esValido(grid, num, row, col) {
+            for (let i = 0; i < 9; i++) {
+                // Comprobar fila y columna
+                if (grid[row][i] === num) return false;
+                if (grid[i][col] === num) return false;
+
+                // Comprobar región 3x3
+                let boxRow = 3 * Math.floor(row / 3) + Math.floor(i / 3);
+                let boxCol = 3 * Math.floor(col / 3) + (i % 3);
+                if (grid[boxRow][boxCol] === num) return false;
+            }
+            return true;
+        }
+
+        // Algoritmo de Backtracking (vuelta atrás) para resolver el Sudoku
+        function resolver(grid) {
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
+                    if (grid[r][c] === 0) {
+                        for (let num = 1; num <= 9; num++) {
+                            if (esValido(grid, num, r, c)) {
+                                grid[r][c] = num;
+                                if (resolver(grid)) return true;
+                                grid[r][c] = 0; // Deshacer intento
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Función para llamar a la resolución y actualizar la vista
+        function resolverYMostrar() {
+            resolver(tableroActual);
+            renderizarTablero();
+        }
+
+        // Restablece el tablero a los valores iniciales
+        function reiniciarTablero() {
+            tableroActual = JSON.parse(JSON.stringify(tableroOriginal));
+            renderizarTablero();
+        }
+
+        // Dibujar el tablero por primera vez al cargar la página
+        renderizarTablero();
+    </script>
+</body>
+</html>
